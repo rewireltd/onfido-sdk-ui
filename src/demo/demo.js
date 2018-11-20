@@ -23,22 +23,8 @@ const queryStrings = window.location
 const useModal = queryStrings.useModal === "true"
 
 const steps = [
-  'welcome',
-  queryStrings.poa === "true" ?
-    {type:'poa'} : undefined,
   {
     type:'document',
-    options: {
-      useWebcam: queryStrings.useWebcam === "true",
-      documentTypes: {}
-    }
-  },
-  {
-    type: 'face',
-    options:{
-      requestedVariant: queryStrings.liveness === "true" ? 'video' : 'standard',
-      useWebcam: queryStrings.useWebcam !== "false",
-    }
   },
   'complete'
 ].filter(a=>a)

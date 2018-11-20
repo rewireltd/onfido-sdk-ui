@@ -16,6 +16,8 @@ import Spinner from '../Spinner'
 import Title from '../Title'
 import { trackException, trackComponentAndMode, appendToTracking, sendEvent } from '../../Tracker'
 import { localised } from '../../locales'
+import { bindActionCreators } from 'redux';
+import { unboundActions } from "../../core";
 
 const CaptureViewerPure = ({capture:{blob, base64, previewUrl, variant, id}, isDocument, isFullScreen}) =>
   <div className={style.captures}>
@@ -187,16 +189,19 @@ class Confirm extends Component  {
   }
 
   onApiSuccess = (apiResponse) => {
+    const { actions } = this.props
+    const { captureId } = this.state
     const duration = Math.round(performance.now() - this.startTime)
     sendEvent('Completed upload', {duration, method: this.props.method})
     this.setState({onfidoId: apiResponse.id})
-    const warnings = apiResponse.sdk_warnings
-    if (warnings && !warnings.detect_glare.valid) {
+    const warnings = apiResponse.sdk_warnings || {}
+    actions.setCaptureRemoteId({ captureId, remoteId: apiResponse.id })
+    if (warnings && warnings.detect_glare.valid) {
       this.setState({uploadInProgress: false})
       this.onGlareWarning()
     }
     else {
-      this.props.nextStep()
+      setTimeout(this.props.nextStep, 0)
     }
   }
 
@@ -217,7 +222,7 @@ class Confirm extends Component  {
         ...(shouldDetectGlare ? { 'detect_glare': 'warn' } : {}),
       }
       const issuingCountry = isPoA ? { 'issuing_country': this.props.country || 'GBR' } : {}
-      const data = { file: blob, type, side, validations, ...issuingCountry}
+      const data = { file: blob, type, side, validations, method, ...issuingCountry}
       uploadDocument(data, token, this.onApiSuccess, this.onApiError)
     }
     else if  (method === 'face') {
@@ -258,9 +263,13 @@ const mapStateToProps = (state, { method, side }) => ({
   isFullScreen: state.globals.isFullScreen,
 })
 
+function mapDispatchToProps(dispatch) {
+    return { actions: bindActionCreators(unboundActions, dispatch) }
+}
+
 const TrackedConfirmComponent = trackComponentAndMode(Confirm, 'confirmation', 'error')
 
-const MapConfirm = connect(mapStateToProps)(localised(TrackedConfirmComponent))
+const MapConfirm = connect(mapStateToProps, mapDispatchToProps)(localised(TrackedConfirmComponent))
 
 const DocumentFrontWrapper = (props) =>
   <MapConfirm {...props} method="document" side="front" />
